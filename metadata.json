@@ -1,0 +1,6 @@
+{
+  "name": "Sistema de Gestión y Ventas",
+  "description": "Un sistema profesional de administración de inventarios, categorías, ventas (Punto de Venta) y clientes, con reportes gráficos y diseño responsivo.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
