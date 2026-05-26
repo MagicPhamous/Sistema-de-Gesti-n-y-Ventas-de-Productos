@@ -470,7 +470,7 @@ export default function SalesView({
             <div className="flex flex-col items-center justify-center space-y-2 text-center pb-4 border-b border-stone-200">
               <Receipt size={36} className="text-amber-600" />
               <h3 className="font-bold text-stone-900 font-display uppercase tracking-wider">Recibo de Caja No S.</h3>
-              <p className="text-[10px] text-stone-400 font-mono">2026-05-25 • Sopocachi, La Paz - Bolivia</p>
+              <p className="text-[10px] text-stone-400 font-mono">2026-05-25 • C. Teniente Rosendo Villa, Mirador Killi Killi, La Paz</p>
             </div>
 
             {/* Simulated legal thermo receipt text */}
