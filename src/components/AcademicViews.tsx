@@ -12,9 +12,278 @@ import {
   FileCode, 
   ExternalLink,
   ChevronDown,
-  Info
+  Info,
+  // icon imports for PDF/image dropzone
+  Upload,
+  Eye,
+  Trash2,
+  Sparkles,
+  ZoomIn,
+  ZoomOut,
+  Image as ImageIcon
 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { 
+  ArbolProblemas, 
+  DiagramaContexto, 
+  DfdNivel1, 
+  DfdNivel2, 
+  DiagramaCasosDeUso, 
+  DiagramaClases 
+} from './InteractiveDiagrams';
+
+// Componente Wrapper para Soportar Carga Directa de PDF o Imagen Original y conmutar con el Interactivo Digital
+interface DiagramWrapperProps {
+  id: string;
+  title: string;
+  description: string;
+  suggestedPath: string;
+  children: React.ReactNode;
+}
+
+export function DiagramWrapper({ id, title, description, suggestedPath, children }: DiagramWrapperProps) {
+  const [viewMode, setViewMode] = useState<'interactive' | 'original'>('interactive');
+  const [fileUrl, setFileUrl] = useState<string | null>(() => {
+    return localStorage.getItem(`uploaded_diagram_${id}`) || null;
+  });
+  const [fileName, setFileName] = useState<string | null>(() => {
+    return localStorage.getItem(`uploaded_diagram_name_${id}`) || null;
+  });
+  const [fileType, setFileType] = useState<string | null>(() => {
+    return localStorage.getItem(`uploaded_diagram_type_${id}`) || null;
+  });
+  const [zoomScale, setZoomScale] = useState<number>(1);
+  const [isDragActive, setIsDragActive] = useState(false);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processFile(file);
+    }
+  };
+
+  const processFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      setFileUrl(dataUrl);
+      setFileName(file.name);
+      setFileType(file.type);
+      try {
+        localStorage.setItem(`uploaded_diagram_${id}`, dataUrl);
+        localStorage.setItem(`uploaded_diagram_name_${id}`, file.name);
+        localStorage.setItem(`uploaded_diagram_type_${id}`, file.type);
+      } catch (err) {
+        console.warn('Could not save to localStorage (probably file too large), using session state', err);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearFile = () => {
+    setFileUrl(null);
+    setFileName(null);
+    setFileType(null);
+    localStorage.removeItem(`uploaded_diagram_${id}`);
+    localStorage.removeItem(`uploaded_diagram_name_${id}`);
+    localStorage.removeItem(`uploaded_diagram_type_${id}`);
+    setZoomScale(1);
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setIsDragActive(true);
+    } else if (e.type === "dragleave") {
+      setIsDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processFile(file);
+    }
+  };
+
+  const isPdf = fileType === 'application/pdf' || fileName?.toLowerCase().endsWith('.pdf');
+
+  return (
+    <div className="bg-white rounded-2xl border-2 border-stone-200/60 shadow-sm overflow-hidden space-y-4">
+      {/* HEADER SECTION WITH TOGGLE SWITCH */}
+      <div className="p-4 sm:p-5 border-b border-stone-200/50 bg-stone-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-amber-600 font-bold shrink-0">📊</span>
+            <h4 className="font-extrabold text-[#5D4037] text-xs sm:text-sm uppercase font-display tracking-tight">
+              {title}
+            </h4>
+          </div>
+          <p className="text-[10px] text-stone-500 font-sans leading-relaxed font-semibold">{description}</p>
+        </div>
+
+        {/* Sliding toggle */}
+        <div className="flex p-1 bg-stone-200/70 rounded-xl border border-stone-300 shrink-0 select-none text-[10px] font-bold">
+          <button
+            type="button"
+            onClick={() => setViewMode('interactive')}
+            className={`px-3 py-1.5 rounded-lg font-sans transition-all flex items-center gap-1.5 uppercase cursor-pointer ${
+              viewMode === 'interactive'
+                ? 'bg-[#5D4037] text-white shadow font-extrabold'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <Sparkles size={11} />
+            <span>Modelo Interactivo</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('original')}
+            className={`px-3 py-1.5 rounded-lg font-sans transition-all flex items-center gap-1.5 uppercase cursor-pointer ${
+              viewMode === 'original'
+                ? 'bg-[#5D4037] text-white shadow font-extrabold'
+                : 'text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <ImageIcon size={11} />
+            <span>Documento Original (PDF/PNG)</span>
+          </button>
+        </div>
+      </div>
+
+      {/* VIEWPORT AREA */}
+      <div className="p-4 sm:p-6 bg-white">
+        {viewMode === 'interactive' ? (
+          <div className="transition-all duration-300">
+            {children}
+          </div>
+        ) : (
+          <div className="transition-all duration-300 space-y-4">
+            {fileUrl ? (
+              <div className="space-y-3">
+                <div className="flex flex-wrap justify-between items-center gap-2 p-3 bg-stone-50 border border-stone-200 rounded-xl text-xs">
+                  <div className="flex items-center gap-2 font-semibold text-stone-700 min-w-0">
+                    <span className="text-lg">{isPdf ? '📄' : '🖼️'}</span>
+                    <span className="truncate max-w-[200px] sm:max-w-md font-mono text-[10px] text-[#5D4037] bg-white border px-2 py-1 rounded-lg">
+                      {fileName || 'documento_soporte.pdf'}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 ml-auto">
+                    {!isPdf && (
+                      <div className="flex border border-stone-200 rounded-lg p-0.5 bg-white">
+                        <button
+                          type="button"
+                          onClick={() => setZoomScale(prev => Math.max(0.5, prev - 0.25))}
+                          className="p-1 hover:bg-stone-100 rounded text-stone-600 cursor-pointer"
+                          title="Reducir"
+                        >
+                          <ZoomOut size={12} />
+                        </button>
+                        <span className="px-1.5 py-0.5 text-[9px] font-mono text-stone-500 flex items-center font-bold">
+                          {Math.round(zoomScale * 100)}%
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setZoomScale(prev => Math.min(3, prev + 0.25))}
+                          className="p-1 hover:bg-stone-100 rounded text-stone-600 cursor-pointer"
+                          title="Ampliar"
+                        >
+                          <ZoomIn size={12} />
+                        </button>
+                      </div>
+                    )}
+                    
+                    <button
+                      type="button"
+                      onClick={clearFile}
+                      className="p-1 px-3 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg font-bold flex items-center gap-1.5 text-[10px] transition-all hover:scale-102 cursor-pointer uppercase"
+                    >
+                      <Trash2 size={11} />
+                      <span>Quitar</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="border border-stone-200 rounded-2xl overflow-hidden bg-stone-100 flex items-center justify-center min-h-[400px] max-h-[750px] relative shadow-inner">
+                  {isPdf ? (
+                    <iframe
+                      src={fileUrl}
+                      className="w-full h-[600px] border-0"
+                      title={title}
+                    />
+                  ) : (
+                    <div className="w-full overflow-auto p-4 flex justify-center items-center min-h-[400px] max-h-[600px]">
+                      <img
+                        src={fileUrl}
+                        alt={title}
+                        style={{ transform: `scale(${zoomScale})`, transition: 'transform 0.2s ease-in-out' }}
+                        className="max-w-full h-auto object-contain shadow-md rounded-lg bg-white origin-center"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div
+                onDragEnter={handleDrag}
+                onDragOver={handleDrag}
+                onDragLeave={handleDrag}
+                onDrop={handleDrop}
+                className={`p-8 py-10 border-2 border-dashed rounded-2xl text-center space-y-4 transition-all duration-250 ${
+                  isDragActive
+                    ? 'border-amber-500 bg-amber-50/20 shadow-inner'
+                    : 'border-stone-200 bg-[#FAF8F5] hover:border-amber-400'
+                }`}
+              >
+                <div className="w-14 h-14 mx-auto rounded-full bg-white border border-stone-150 flex items-center justify-center text-3xl shadow-sm">
+                  📄
+                </div>
+                
+                <div className="space-y-1">
+                  <h4 className="font-extrabold text-[#5D4037] text-xs font-display uppercase tracking-wide">
+                    Integra tu propio Diagrama de la Defensa
+                  </h4>
+                  <p className="text-[10px] text-stone-500 max-w-md mx-auto leading-relaxed">
+                    Sube y visualiza el PDF o Imagen original de tus diagramas para presentarlo junto al modelo dinámico en tus exposiciones de la materia de ADS de la UMSA.
+                  </p>
+                </div>
+
+                <div className="flex flex-col items-center justify-center gap-1.5">
+                  <label className="inline-block bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-[10px] uppercase tracking-wide px-4 py-2 rounded-xl shadow border border-amber-700 hover:scale-[1.03] transition-all cursor-pointer select-none">
+                    Seleccionar Archivo (PDF / PNG / JPG)
+                    <input
+                      type="file"
+                      accept=".pdf, .png, .jpg, .jpeg"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+                  <span className="text-[9px] text-stone-400 font-medium italic">o arrastrar y soltar el archivo aquí</span>
+                </div>
+
+                <div className="mx-auto max-w-lg mt-3 bg-white p-3.5 border border-stone-200/70 rounded-xl text-left space-y-1.5">
+                  <p className="text-[10px] text-stone-600 font-semibold flex items-center gap-1.5">
+                    <Info size={11} className="text-amber-500 shrink-0" />
+                    <span><strong>💡 Integración Permanente en Servidor:</strong></span>
+                  </p>
+                  <p className="text-[9px] text-stone-500 font-medium leading-relaxed font-sans">
+                    Si eres parte de los estudiantes (Cristian Carlos, Fabian Huascar, Jorge Luis, Joel Isai, Ivar Mijail) y vas a exportar el proyecto, simplemente guarda el archivo en el build de tu server como <code className="font-mono bg-stone-100 text-[#D84315] px-1 py-0.5 rounded text-[8px] font-extrabold">{suggestedPath}</code> para que se asocie automáticamente en el código.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // Fotos reales de Micro Market Mirador (definidas como constantes para asegurar compilación de TypeScript limpia)
 const microMarketFront = "/src/assets/images/micro_market_front_1779838266947.png";
@@ -205,6 +474,17 @@ export default function AcademicViews({ currentTab }: AcademicViewsProps) {
               );
             })}
           </div>
+
+          <div className="pt-4 border-t border-stone-200/50">
+            <DiagramWrapper 
+              id="arbol_problemas"
+              title="Diagnóstico Estratégico: Árbol de Problemas"
+              description="Relaciones detalladas de causa-efecto concertadas para sustentar académicamente el proyecto."
+              suggestedPath="/assets/diagramas/arbol_problemas.png"
+            >
+              <ArbolProblemas />
+            </DiagramWrapper>
+          </div>
         </motion.div>
       )}
 
@@ -228,24 +508,15 @@ export default function AcademicViews({ currentTab }: AcademicViewsProps) {
             </p>
           </div>
 
-          {/* Diagrama del modelo ambiental PLACEHOLDER */}
-          <div className="bg-white p-5 rounded-2xl border-2 border-stone-200/60 shadow-sm space-y-4">
-            <div className="flex items-center gap-2 pb-2 border-b border-stone-100">
-              <FileCode className="text-amber-500" size={16} />
-              <h3 className="font-bold text-stone-900 text-xs uppercase font-display">Modelo Ambiental: Diagrama de Contexto</h3>
-            </div>
-            
-            <div className="p-6 bg-[#FAF8F5] border border-dashed border-amber-500/40 rounded-xl text-center space-y-3">
-              <span className="text-4xl">📐</span>
-              <h4 className="font-bold text-[#5D4037] text-xs uppercase font-display">Área de Visualización de Diagrama de Contexto</h4>
-              <p className="text-[11px] text-stone-500 max-w-lg mx-auto font-sans leading-relaxed">
-                [<strong>Espacio para tu Diagrama</strong>] Aquí debes subir la imagen de tu Diagrama de Contexto. El sistema de Tienda Raul tiene 4 entidades externas clásicas: <strong>Clientes, Proveedores Mayoristas, Don Raúl (Gerente), y el Empleado de Caja</strong>.
-              </p>
-              <div className="inline-block bg-[#FFF3E0] text-[#D84315] font-mono text-[10px] font-bold px-3 py-1.5 rounded-lg border border-amber-200">
-                Archivo sugerido: `/public/assets/diagramas/M_Ambiental.png`
-              </div>
-            </div>
-          </div>
+          {/* Diagrama del modelo ambiental INTERACTIVO COPIADO DE TUS PNG */}
+          <DiagramWrapper
+            id="diagrama_contexto"
+            title="Modelo Ambiental: Diagrama de Contexto (Nivel 0)"
+            description="Mapeo lógico de fronteras operacionales y flujos bidireccionales de datos."
+            suggestedPath="/assets/diagramas/diagrama_contexto.png"
+          >
+            <DiagramaContexto />
+          </DiagramWrapper>
 
           {/* Lista de Acontecimientos */}
           <div className="bg-white p-5 rounded-2xl border-2 border-stone-200/60 shadow-sm space-y-4">
@@ -442,13 +713,52 @@ export default function AcademicViews({ currentTab }: AcademicViewsProps) {
               </div>
             </div>
 
-            {/* DIAGRAMS SUBMISSION COMPONENT - FULLY INTERACTIVE DFD SIMULATOR */}
-            <div className="p-6 bg-[#FAF8F5] border-2 border-[#5D4037]/20 rounded-2xl space-y-6">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-stone-200">
-                <div className="space-y-0.5">
-                  <h4 className="font-extrabold text-[#5D4037] text-sm uppercase font-display flex items-center gap-1.5">
-                    <span>⚡</span> Modelado de Procesos: Diagrama de Flujo de Datos (DFD)
-                  </h4>
+            {/* MODELADO DE PROCESOS INTERACTIVO (DFD) COPIADOS DE TUS PNG */}
+            <DiagramWrapper
+              id={selectedDfdTab === 'nivel1' ? 'dfd_nivel1' : 'dfd_nivel2'}
+              title={selectedDfdTab === 'nivel1' ? 'Modelado de Procesos: DFD Nivel 1 (Gráfico 0)' : 'Descomposición Funcional: DFD Nivel 2'}
+              description={selectedDfdTab === 'nivel1' ? 'Mapeo conceptual del primer grado de descomposición física y lógica del negocio.' : 'Sub-procesos de validación secuencial tras seleccionar pasarelas de pago de Tienda Raul.'}
+              suggestedPath={selectedDfdTab === 'nivel1' ? '/assets/diagramas/dfd_nivel1.png' : '/assets/diagramas/dfd_nivel2.png'}
+            >
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-stone-200">
+                  <div className="space-y-0.5">
+                    <h4 className="font-extrabold text-[#5D4037] text-sm uppercase font-display flex items-center gap-1.5 font-display">
+                      ⚡ Modelado de Procesos: Diagramas de Flujo de Datos (DFD)
+                    </h4>
+                    <p className="text-[10px] text-stone-500 font-sans font-medium">Visualiza el flujo de información interactivo del Micro Market Mirador.</p>
+                  </div>
+                  
+                  <div className="flex bg-stone-100 p-1 rounded-xl border border-stone-200 shrink-0 select-none">
+                    <button 
+                      type="button"
+                      onClick={() => setSelectedDfdTab('nivel1')}
+                      className={`px-3 py-1.5 text-[10px] font-extrabold uppercase rounded-lg font-sans transition-all ${selectedDfdTab === 'nivel1' ? 'bg-[#5D4037] text-white shadow' : 'text-stone-600 hover:text-stone-900'} cursor-pointer`}
+                    >
+                      DFD Nivel 1 (Gráfico 0)
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setSelectedDfdTab('nivel2')}
+                      className={`px-3 py-1.5 text-[10px] font-extrabold uppercase rounded-lg font-sans transition-all ${selectedDfdTab === 'nivel2' ? 'bg-[#5D4037] text-white shadow' : 'text-stone-600 hover:text-stone-900'} cursor-pointer`}
+                    >
+                      DFD Nivel 2 Detalle (Proceso 2)
+                    </button>
+                  </div>
+                </div>
+
+                {selectedDfdTab === 'nivel1' ? <DfdNivel1 /> : <DfdNivel2 />}
+              </div>
+            </DiagramWrapper>
+
+            {/* OLD BLOCK CONTAINER HIDDEN */}
+            <div className="hidden">
+              <div className="p-6 bg-[#FAF8F5] border-2 border-[#5D4037]/20 rounded-2xl space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-stone-200">
+                  <div className="space-y-0.5">
+                    <h4 className="font-extrabold text-[#5D4037] text-sm uppercase font-display flex items-center gap-1.5">
+                      <span>⚡</span> Modelado de Procesos: Diagrama de Flujo de Datos (DFD)
+                    </h4>
                   <p className="text-[10px] text-stone-500 font-sans">Visualiza el flujo de información interactivo del Micro Market Mirador.</p>
                 </div>
                 
@@ -976,6 +1286,7 @@ export default function AcademicViews({ currentTab }: AcademicViewsProps) {
 
             </div>
           </div>
+          </div> {/* Closing hidden wrapper */}
 
         </motion.div>
       )}
@@ -993,55 +1304,24 @@ export default function AcademicViews({ currentTab }: AcademicViewsProps) {
           </div>
 
           {/* Diagrama de clases de Tienda Raul */}
-          <div className="bg-white p-5 rounded-2xl border-2 border-stone-200/60 shadow-sm space-y-4">
-            <div className="flex items-center gap-2 pb-2 border-b border-stone-100">
-              <FileCode className="text-amber-500" size={16} />
-              <h3 className="font-bold text-stone-900 text-xs uppercase font-display">Diagrama de Clases Estático</h3>
-            </div>
-            
-            <p className="text-xs text-stone-500 leading-relaxed font-sans">
-              Define los modelos lógicos orientados a objetos. Para este software de Tienda Raul se han resuelto las siguientes clases nucleares:
-            </p>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-center text-[10px] font-bold uppercase text-stone-600">
-              <span className="p-2 bg-[#FFF3E0] rounded-lg border border-amber-200 text-[#5D4037]">Clase: Producto</span>
-              <span className="p-2 bg-[#FFF3E0] rounded-lg border border-amber-200 text-[#5D4037]">Clase: Categoría</span>
-              <span className="p-2 bg-[#FFF3E0] rounded-lg border border-amber-200 text-[#5D4037]">Clase: Cliente</span>
-              <span className="p-2 bg-[#FFF3E0] rounded-lg border border-amber-200 text-[#5D4037]">Clase: Venta</span>
-              <span className="p-2 bg-[#FFF3E0] rounded-lg border border-amber-200 text-[#5D4037]">Clase: DetalleVenta</span>
-              <span className="p-2 bg-[#FFF3E0] rounded-lg border border-amber-200 text-[#5D4037]">Clase: Transacción</span>
-            </div>
-
-            <div className="p-6 bg-[#FAF8F5] border border-dashed border-amber-500/40 rounded-xl text-center space-y-3">
-              <span className="text-4xl">🧱</span>
-              <h4 className="font-bold text-[#5D4037] text-xs uppercase font-display">Área del Diagrama de Clases UML</h4>
-              <p className="text-[11px] text-stone-500 max-w-lg mx-auto font-sans leading-relaxed">
-                [<strong>Espacio para tu Diagrama de Clases</strong>] Aquí debes apuntar la imagen del Diagrama de Clases con sus respectivos atributos (sku, stock, total, etc.) y operaciones de código (actualizarStock, registrarMovimiento).
-              </p>
-              <div className="inline-block bg-[#FFF3E0] text-[#D84315] font-mono text-[10px] font-bold px-3 py-1.5 rounded-lg border border-amber-200">
-                Archivo sugerido: `/public/assets/diagramas/Diagrama_Clases.png`
-              </div>
-            </div>
-          </div>
+          <DiagramWrapper
+            id="diagrama_clases"
+            title="Diagrama de Clases UML Estático"
+            description="Definiciones del modelo de dominio de datos, clases de control, multiplicidad y firmas de métodos operativos."
+            suggestedPath="/assets/diagramas/diagrama_clases.png"
+          >
+            <DiagramaClases />
+          </DiagramWrapper>
 
           {/* Diagrama de Casos de uso de negocio y sistema */}
-          <div className="bg-white p-5 rounded-2xl border-2 border-stone-200/60 shadow-sm space-y-4">
-            <div className="flex items-center gap-2 pb-2 border-b border-stone-100">
-              <FileCode className="text-amber-500" size={16} />
-              <h3 className="font-bold text-stone-900 text-xs uppercase font-display">Diagramas de Casos de Uso (UML)</h3>
-            </div>
-            
-            <div className="p-6 bg-[#FAF8F5] border border-dashed border-amber-500/40 rounded-xl text-center space-y-3">
-              <span className="text-4xl">🔮</span>
-              <h4 className="font-bold text-[#5D4037] text-xs uppercase font-display">Casos de Uso de Negocio y Sistema</h4>
-              <p className="text-[11px] text-stone-500 max-w-lg mx-auto font-sans leading-relaxed">
-                [<strong>Espacio para Diagrama de Casos de Uso</strong>] Aquí puedes enlazar los diagramas de interacciones. Incluyen dependencias funcionales clásicas de inclusión `&lt;&lt;include&gt;&gt;` y extensión `&lt;&lt;extend&gt;&gt;` relativas a Procesar Cobros y Validar Stock Mínimo.
-              </p>
-              <div className="inline-block bg-[#FFF3E0] text-[#D84315] font-mono text-[10px] font-bold px-3 py-1.5 rounded-lg border border-amber-200">
-                Archivos: `/public/assets/diagramas/DCU_negocio.jpg` y `DCU_sistema.jpg`
-              </div>
-            </div>
-          </div>
+          <DiagramWrapper
+            id="casos_de_uso"
+            title="Diagramas de Casos de Uso (UML)"
+            description="Mapeo lúdico de comportamientos funcionales y fronteras operativas por roles y actores en el micro-market."
+            suggestedPath="/assets/diagramas/diagrama_casos_uso.png"
+          >
+            <DiagramaCasosDeUso />
+          </DiagramWrapper>
 
         </motion.div>
       )}
