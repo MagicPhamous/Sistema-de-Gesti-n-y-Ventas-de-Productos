@@ -32,6 +32,11 @@ import {
   DiagramaClases 
 } from './InteractiveDiagrams';
 
+// Importar imágenes usando ES Modules para que Vite las procese y asigne rutas relativas correctas en producción
+import microMarketFront from '../assets/images/micro_market_front_1779838266947.png';
+import microMarketHill from '../assets/images/micro_market_hill_1779838286747.png';
+import microMarketInside from '../assets/images/micro_market_inside_1779838307514.png';
+
 // Componente Wrapper para Soportar Carga Directa de PDF o Imagen Original y conmutar con el Interactivo Digital
 interface DiagramWrapperProps {
   id: string;
@@ -285,10 +290,7 @@ export function DiagramWrapper({ id, title, description, suggestedPath, children
   );
 }
 
-// Fotos reales de Micro Market Mirador (definidas como constantes para asegurar compilación de TypeScript limpia)
-const microMarketFront = "/src/assets/images/micro_market_front_1779838266947.png";
-const microMarketHill = "/src/assets/images/micro_market_hill_1779838286747.png";
-const microMarketInside = "/src/assets/images/micro_market_inside_1779838307514.png";
+// Fotos reales de Micro Market Mirador (las variables se importan al inicio del archivo para integrarse en la empaquetación)
 
 interface AcademicViewsProps {
   currentTab: 'historia' | 'marco' | 'estructurado' | 'objetos' | 'videos' | 'contacto';

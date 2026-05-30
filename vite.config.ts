@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 
 export default defineConfig(() => {
   return {
-    base: './',
+    base: '/Sistema-de-Gesti-n-y-Ventas-de-Productos/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
